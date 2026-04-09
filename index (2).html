@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Memory Mosaic</title>
+  <style>
+    /* ── Reset ───────────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 15px; line-height: 1.5;
+      min-height: 100dvh;
+      background: linear-gradient(135deg, #10b981, #0d9488, #0891b2);
+      display: flex; align-items: flex-start; justify-content: center;
+      padding: 12px 8px 24px;
+    }
+    button { font: inherit; border: 0; cursor: pointer; background: none; }
+
+    /* ── Shell card ──────────────────────────────────────────────────────── */
+    .shell {
+      background: #fff;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.22);
+      width: 100%; max-width: 480px;
+      overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+
+    /* ── Header ──────────────────────────────────────────────────────────── */
+    .app-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px 14px;
+      border-bottom: 1px solid #f0fdfa;
+    }
+    .app-title {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 20px; font-weight: 800; color: #134e4a;
+    }
+    .app-title svg { width: 26px; height: 26px; color: #0d9488; flex-shrink: 0; }
+    .header-btn {
+      background: #f0fdfa; border: 1px solid #99f6e4; color: #0d9488;
+      border-radius: 50px; padding: 6px 14px;
+      font-size: 13px; font-weight: 700;
+      display: flex; align-items: center; gap: 5px;
+      transition: background .15s;
+    }
+    .header-btn:hover { background: #ccfbf1; }
+    .header-btn svg { width: 15px; height: 15px; }
+
+    /* ── Screens ─────────────────────────────────────────────────────────── */
+    .screen { padding: 20px; }
+    .screen.hidden { display: none; }
+
+    /* ═══════════════════════════════════════════════
+       INTRO SCREEN
+    ═══════════════════════════════════════════════ */
+    .intro-subtitle {
+      text-align: center; font-size: 16px; font-weight: 600;
+      color: #0d9488; margin-bottom: 14px;
+    }
+    .intro-box {
+      background: #f0fdfa; border-radius: 12px; padding: 16px; margin-bottom: 14px;
+    }
+    .intro-box-title { font-weight: 700; font-size: 14px; color: #134e4a; margin-bottom: 10px; }
+    .steps { display: flex; flex-direction: column; gap: 7px; }
+    .step { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: #374151; }
+    .step-num {
+      width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+      background: #0d9488; color: #fff;
+      font-size: 11px; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .scoring-box {
+      background: #f0fdfa; border-radius: 12px; padding: 14px; margin-bottom: 18px;
+      border: 1px solid #ccfbf1;
+    }
+    .scoring-box-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: #5eead4; margin-bottom: 10px; }
+    .scoring-row {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 13px; color: #374151; padding: 3px 0;
+    }
+    .scoring-row .val { font-weight: 700; color: #0d9488; }
+    .scoring-row.total { border-top: 1px solid #ccfbf1; margin-top: 6px; padding-top: 8px; font-weight: 700; }
+    .scoring-row.total .val { font-size: 15px; }
+    /* ── Difficulty picker ── */
+    .diff-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .8px; color: #5eead4; margin-bottom: 8px;
+    }
+    .diff-picker { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+    .diff-btn {
+      border: 2px solid #ccfbf1; border-radius: 12px; padding: 12px 10px;
+      background: #fff; cursor: pointer; text-align: left;
+      transition: border-color .15s, background .15s, box-shadow .15s;
+      display: flex; flex-direction: column; gap: 3px;
+    }
+    .diff-btn:hover { border-color: #0d9488; background: #f0fdfa; }
+    .diff-btn.active { border-color: #0d9488; background: #f0fdfa; box-shadow: 0 0 0 3px rgba(13,148,136,.15); }
+    .diff-btn-top { display: flex; align-items: center; gap: 7px; }
+    .diff-icon { font-size: 18px; }
+    .diff-name { font-size: 14px; font-weight: 800; color: #134e4a; }
+    .diff-badge {
+      font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+      padding: 2px 7px; border-radius: 50px; margin-left: auto; flex-shrink: 0;
+    }
+    .diff-badge.easy { background: #d1fae5; color: #065f46; }
+    .diff-badge.hard { background: #fee2e2; color: #991b1b; }
+    .diff-desc { font-size: 11px; color: #6b7280; line-height: 1.4; padding-left: 25px; }
+
+    .intro-actions { display: flex; gap: 10px; }
+    .btn-primary {
+      flex: 1; background: #0d9488; color: #fff; border-radius: 10px;
+      padding: 13px; font-size: 15px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      transition: background .15s; box-shadow: 0 4px 14px rgba(13,148,136,.3);
+    }
+    .btn-primary:hover { background: #0f766e; }
+    .btn-secondary {
+      flex: 1; background: #fff; color: #0d9488; border: 2px solid #0d9488;
+      border-radius: 10px; padding: 13px; font-size: 15px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      transition: background .15s, border-color .15s;
+    }
+    .btn-secondary:hover { background: #f0fdfa; }
+
+    
+    .intro-box-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+    .info-icon-btn { width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; background: #ffffff; color: #0d9488; border: 1px solid #99f6e4; box-shadow: 0 2px 8px rgba(13,148,136,.12); transition: background .15s, transform .15s; cursor: pointer; }
+    .info-icon-btn:hover { background: #ccfbf1; }
+    .info-icon-btn:active { transform: scale(.96); }
+    .info-icon-btn svg { width: 15px; height: 15px; }
+    .modal { position: fixed; inset: 0; z-index: 1200; display: flex; align-items: center; justify-content: center; padding: 18px; }
+    .modal.hidden { display: none; }
+    .modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.38); backdrop-filter: blur(3px); }
+    .modal-card { position: relative; z-index: 1; width: min(380px, 100%); background: #fff; border-radius: 16px; padding: 18px; box-shadow: 0 18px 48px rgba(0,0,0,.22); border: 1px solid #ccfbf1; }
+    .modal-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+    .modal-title { font-size: 14px; font-weight: 800; color: #134e4a; text-transform: uppercase; letter-spacing: .06em; }
+    .modal-close { width: 30px; height: 30px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: #f0fdfa; border: 1px solid #99f6e4; color: #0d9488; font-size: 16px; font-weight: 800; cursor: pointer; }
+    .modal-close:hover { background: #ccfbf1; }
+/* ═══════════════════════════════════════════════
+       GAME SCREEN
+    ═══════════════════════════════════════════════ */
+    /* HUD */
+    .hud {
+      display: flex; flex-wrap: wrap; gap: 7px;
+      justify-content: space-between; align-items: center;
+      margin-bottom: 14px;
+    }
+    .hud-left { display: flex; gap: 7px; flex-wrap: wrap; }
+    .hud-right { display: flex; gap: 7px; align-items: center; }
+    .stat-chip {
+      background: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 50px;
+      padding: 5px 11px; font-size: 12px; font-weight: 600; color: #134e4a;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .stat-chip .lbl { color: #5eead4; font-weight: 600; }
+    .score-chip {
+      background: linear-gradient(135deg, #f0fdfa, #ccfbf1);
+      border: 1.5px solid #5eead4; border-radius: 50px;
+      padding: 5px 14px; font-size: 13px; font-weight: 800; color: #0d9488;
+      display: flex; align-items: center; gap: 5px;
+      transition: transform .2s;
+    }
+    .score-chip.pop { animation: chipPop 240ms ease; }
+    @keyframes chipPop { 0%{transform:scale(1)} 45%{transform:scale(1.18)} 100%{transform:scale(1)} }
+    .hud-btn {
+      background: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 50px;
+      padding: 5px 12px; font-size: 12px; font-weight: 700; color: #0d9488;
+      transition: background .15s;
+    }
+    .hud-btn:hover { background: #ccfbf1; }
+
+    /* Board */
+    .board-grid {
+      display: grid; grid-template-columns: repeat(4,1fr);
+      gap: clamp(5px, 1.5vw, 9px);
+      margin-bottom: 12px;
+    }
+    /* Card */
+    .card {
+      position: relative; aspect-ratio: 1 / 1.05;
+      cursor: pointer; border: none; padding: 0; background: none;
+    }
+    .card-inner {
+      position: absolute; inset: 0;
+      transform-style: preserve-3d;
+      transition: transform 380ms cubic-bezier(.2,.8,.2,1);
+      border-radius: 10px;
+    }
+    .card[data-flipped="true"] .card-inner,
+    .card[data-state="matched"]  .card-inner { transform: rotateY(180deg); }
+    .card[data-state="matched"]  .card-inner { transform: rotateY(180deg) scale(.97); }
+    .card-face {
+      position: absolute; inset: 0; backface-visibility: hidden;
+      border-radius: 10px; overflow: hidden;
+    }
+    /* Front (unrevealed) */
+    .card-front {
+      background: linear-gradient(145deg, #0d9488, #0891b2);
+      display: flex; align-items: center; justify-content: center; flex-direction: column;
+      gap: 3px; color: rgba(255,255,255,.7);
+    }
+    .card-front-star { font-size: clamp(.9rem,2.6vw,1.4rem); }
+    .card-front-lbl { font-size: .45rem; text-transform: uppercase; letter-spacing: .1em; }
+    /* Back (revealed) */
+    .card-back {
+      transform: rotateY(180deg);
+      display: flex; align-items: center; justify-content: center; flex-direction: column;
+      gap: 2px; padding: 4px;
+      border: 2px solid #ccfbf1;
+    }
+    .card-emoji { font-size: clamp(1.1rem,2.8vw,1.8rem); line-height: 1; }
+    .card-name { font-size: clamp(.42rem,.85vw,.65rem); font-weight: 700; color: #134e4a; text-align: center; }
+        .card-word { font-size: clamp(.72rem,1.7vw,1rem); font-weight: 800; color: #134e4a; text-align: center; line-height: 1.15; letter-spacing: .01em; word-break: break-word; }
+    /* Matched state */
+    .card[data-state="matched"] .card-back {
+      background: #f0fdfa; border-color: #0d9488;
+    }
+    .matched-tick {
+      position: absolute; top: 3px; right: 3px;
+      width: 15px; height: 15px; border-radius: 50%;
+      background: #0d9488; color: #fff;
+      font-size: .5rem; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .card[data-state="matched"] .card-front { opacity: .5; }
+    .card:hover:not([disabled]) .card-inner { box-shadow: 0 4px 16px rgba(13,148,136,.25); }
+    .card:active:not([disabled]) .card-inner { transform: scale(.95); }
+    .card[data-state="idle"]:not([data-flipped="true"]):active .card-inner { transform: scale(.94); }
+
+    /* ── Card info button (hard mode) ── */
+    .card-info-btn {
+      position: absolute; bottom: 3px; left: 3px;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: rgba(13,148,136,.15); border: 1px solid rgba(13,148,136,.35);
+      color: #0d9488; font-size: .5rem; font-weight: 900; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; z-index: 10;
+      transition: background .15s, transform .15s;
+    }
+    .card-info-btn:hover { background: rgba(13,148,136,.28); transform: scale(1.15); }
+    .card-info-btn svg { width: 9px; height: 9px; pointer-events: none; }
+
+    /* ── Term info overlay ── */
+    .term-overlay {
+      position: fixed; inset: 0; z-index: 2000;
+      display: flex; align-items: center; justify-content: center;
+      padding: 18px;
+    }
+    .term-overlay.hidden { display: none; }
+    .term-overlay-backdrop {
+      position: absolute; inset: 0;
+      background: rgba(0,0,0,.45); backdrop-filter: blur(4px);
+    }
+    .term-card {
+      position: relative; z-index: 1;
+      width: min(360px, 100%);
+      background: #fff; border-radius: 18px;
+      padding: 20px 20px 18px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.24);
+      border: 1px solid #ccfbf1;
+      animation: termCardIn .22s cubic-bezier(.2,.8,.2,1);
+    }
+    @keyframes termCardIn {
+      from { opacity: 0; transform: scale(.92) translateY(10px); }
+      to   { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .term-card-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 10px; margin-bottom: 12px;
+    }
+    .term-card-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: #f0fdfa; border: 1px solid #99f6e4;
+      border-radius: 50px; padding: 4px 10px;
+      font-size: 11px; font-weight: 700; color: #0d9488;
+      text-transform: uppercase; letter-spacing: .06em; flex-shrink: 0;
+    }
+    .term-card-title {
+      font-size: 18px; font-weight: 800; color: #134e4a;
+      line-height: 1.15; margin-bottom: 10px;
+    }
+    .term-card-desc {
+      font-size: 13px; color: #374151; line-height: 1.6;
+    }
+    .term-card-close {
+      width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: #f0fdfa; border: 1px solid #99f6e4;
+      color: #0d9488; font-size: 14px; font-weight: 800; cursor: pointer;
+      transition: background .15s;
+    }
+    .term-card-close:hover { background: #ccfbf1; }
+
+    /* Status bar */
+    .status-bar {
+      text-align: center; font-size: 12px; font-weight: 600;
+      color: #5eead4; min-height: 1.4em; margin-bottom: 4px;
+    }
+    .status-bar.match  { color: #059669; }
+    .status-bar.miss   { color: #dc2626; }
+
+    /* ═══════════════════════════════════════════════
+       ROUND COMPLETE SCREEN
+    ═══════════════════════════════════════════════ */
+    .complete-title {
+      text-align: center; font-size: 20px; font-weight: 800;
+      color: #134e4a; margin-bottom: 14px;
+    }
+    .result-banner {
+      background: linear-gradient(135deg, #ccfbf1, #a5f3fc);
+      border-radius: 14px; padding: 18px; margin-bottom: 16px;
+      text-align: center;
+    }
+    .result-score-big { font-size: 42px; font-weight: 900; color: #0d9488; line-height: 1; }
+    .result-score-label { font-size: 13px; color: #374151; margin-top: 4px; }
+    .result-grid {
+      display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-top: 14px;
+    }
+    .result-cell {
+      background: rgba(255,255,255,.7); border-radius: 10px; padding: 10px 6px; text-align: center;
+    }
+    .result-cell-val { font-size: 18px; font-weight: 800; color: #0d9488; }
+    .result-cell-lbl { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; color: #5eead4; }
+    .breakdown {
+      background: #f0fdfa; border: 1px solid #ccfbf1;
+      border-radius: 12px; padding: 14px; margin-bottom: 16px;
+    }
+    .breakdown-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: #5eead4; margin-bottom: 10px; }
+    .breakdown-row {
+      display: flex; justify-content: space-between; font-size: 13px; color: #374151; padding: 3px 0;
+    }
+    .breakdown-row .pts { font-weight: 700; color: #0d9488; }
+    .breakdown-row.total { border-top: 1px solid #ccfbf1; margin-top: 6px; padding-top: 8px; font-weight: 700; }
+    .breakdown-row.total .pts { color: #134e4a; font-size: 15px; }
+    .new-best-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: #d1fae5; border: 1px solid #6ee7b7; color: #065f46;
+      border-radius: 50px; padding: 5px 12px; font-size: 12px; font-weight: 700;
+      margin-bottom: 14px;
+    }
+    .complete-actions { display: flex; gap: 10px; justify-content: center; }
+
+    /* ═══════════════════════════════════════════════
+       DROPPING PILL TOAST  (word_recall style)
+    ═══════════════════════════════════════════════ */
+    .toast {
+      position: fixed;
+      top: 20px; left: 50%; transform: translateX(-50%) translateY(-90px);
+      padding: 12px 22px; border-radius: 50px;
+      font-size: 14px; font-weight: 700;
+      box-shadow: 0 8px 32px rgba(0,0,0,.18);
+      transition: transform .35s cubic-bezier(.34,1.56,.64,1);
+      z-index: 9999; white-space: nowrap; pointer-events: none;
+    }
+    .toast.show  { transform: translateX(-50%) translateY(0); }
+    .toast.match { background: #d1fae5; color: #065f46; }
+    .toast.miss  { background: #fee2e2; color: #991b1b; }
+
+    /* ═══════════════════════════════════════════════
+       STATS DRAWER  (identical structure to word_recall)
+    ═══════════════════════════════════════════════ */
+    #pt-panel { pointer-events: none; }
+    #pt-panel.pt-open { pointer-events: all; }
+    .pt-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.35); backdrop-filter: blur(3px);
+      z-index: 1000; opacity: 0; transition: opacity .3s ease;
+    }
+    #pt-panel.pt-open .pt-backdrop { opacity: 1; }
+    .pt-drawer {
+      position: fixed; top: 0; right: 0; bottom: 0;
+      width: min(400px,100vw);
+      background: #fff; border-left: 1px solid #99f6e4;
+      z-index: 1001; display: flex; flex-direction: column;
+      transform: translateX(100%);
+      transition: transform .35s cubic-bezier(.32,.72,0,1);
+      box-shadow: -8px 0 40px rgba(13,148,136,.12);
+    }
+    #pt-panel.pt-open .pt-drawer { transform: translateX(0); }
+    .pt-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 24px; border-bottom: 1px solid #ccfbf1; flex-shrink: 0;
+      background: #f0fdfa;
+    }
+    .pt-header-title { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 800; color: #134e4a; }
+    .pt-header-icon { font-size: 22px; }
+    .pt-close-btn {
+      background: #ccfbf1; border: 1px solid #99f6e4; color: #0d9488;
+      font-size: 14px; width: 32px; height: 32px; border-radius: 50%;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: all .15s;
+    }
+    .pt-close-btn:hover { background: #99f6e4; color: #134e4a; }
+    .pt-scroll {
+      overflow-y: auto; flex: 1; padding: 20px 24px 40px;
+      scrollbar-width: thin; scrollbar-color: #5eead4 transparent;
+    }
+    .pt-scroll::-webkit-scrollbar { width: 4px; }
+    .pt-scroll::-webkit-scrollbar-thumb { background: #5eead4; border-radius: 4px; }
+    .pt-empty { text-align: center; padding: 60px 20px; }
+    .pt-empty-icon { font-size: 48px; margin-bottom: 16px; }
+    .pt-empty-title { font-size: 16px; font-weight: 700; color: #0d9488; margin-bottom: 8px; }
+    .pt-empty-sub { font-size: 13px; line-height: 1.6; color: #5eead4; }
+    .pt-overview { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 24px; }
+    .pt-pill {
+      background: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 14px; padding: 12px 8px; text-align: center;
+    }
+    .pt-pill-val { font-size: 22px; font-weight: 800; color: #0d9488; line-height: 1; margin-bottom: 4px; }
+    .pt-pill-lbl { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .8px; color: #5eead4; }
+    .pt-section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: #5eead4; margin: 20px 0 10px; }
+    /* ── Sparkline game card (face_recall "By Game" style, teal) ── */
+    .pt-game-cards { display: flex; flex-direction: column; gap: 10px; }
+    .pt-game-card {
+      background: #f0fdfa; border: 1px solid #ccfbf1;
+      border-radius: 16px; padding: 14px 16px; transition: border-color .2s;
+    }
+    .pt-game-card:hover { border-color: #5eead4; }
+    .pt-game-header {
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;
+    }
+    .pt-game-name {
+      font-size: 14px; font-weight: 700; color: #134e4a;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .pt-mode-badge {
+      font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px;
+      background: #ccfbf1; color: #0d9488; padding: 2px 7px; border-radius: 6px; border: 1px solid #99f6e4;
+    }
+    .pt-trend { font-size: 20px; font-weight: 800; line-height: 1; }
+    .pt-game-metrics {
+      display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-bottom: 12px;
+    }
+    .pt-metric { text-align: center; }
+    .pt-metric-val { font-size: 16px; font-weight: 800; color: #134e4a; line-height: 1; margin-bottom: 2px; }
+    .pt-metric-lbl { font-size: 10px; color: #5eead4; text-transform: uppercase; letter-spacing: .5px; }
+    .pt-sparkline-wrap { position: relative; }
+    .pt-sparkline { width: 100%; height: 36px; display: block; }
+    .pt-sparkline-label { font-size: 10px; color: #99f6e4; text-align: right; margin-top: 2px; }
+    /* history rows */
+    .pt-history { display: flex; flex-direction: column; gap: 8px; }
+    .pt-history-row {
+      display: grid; grid-template-columns: 1fr auto auto auto;
+      align-items: center; gap: 10px; padding: 8px 0;
+      border-bottom: 1px solid #f0fdfa;
+    }
+    .pt-history-row:last-child { border-bottom: none; }
+    .pt-history-score { font-size: 13px; font-weight: 800; white-space: nowrap; }
+    .pt-history-detail { font-size: 12px; font-weight: 600; color: #0d9488; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pt-bar-track { width: 48px; height: 4px; background: #ccfbf1; border-radius: 4px; overflow: hidden; }
+    .pt-bar-fill  { height: 100%; border-radius: 4px; transition: width .5s ease; }
+    .pt-history-date { font-size: 10px; color: #99f6e4; text-align: right; line-height: 1.4; white-space: nowrap; }
+    .pt-history-date span { opacity: .7; }
+    .pt-clear-btn {
+      margin-top: 28px; width: 100%; background: transparent;
+      border: 1px solid #fca5a5; color: #ef4444; padding: 10px;
+      border-radius: 10px; font-size: 12px; font-weight: 600;
+      cursor: pointer; font-family: inherit; transition: all .2s;
+    }
+    .pt-clear-btn:hover { background: #fef2f2; border-color: #f87171; }
+  </style>
+</head>
+<body>
+
+  <!-- ── Toast ────────────────────────────────────────────────────────────── -->
+  <div class="toast" id="toast"></div>
+  <!-- Scoring info overlay -->
+  <div class="modal hidden" id="scoringModal">
+    <div class="modal-backdrop" onclick="ScoringInfo.close()"></div>
+    <div class="modal-card">
+      <div class="modal-top">
+        <div class="modal-title">Scoring</div>
+        <button class="modal-close" onclick="ScoringInfo.close()">&times;</button>
+      </div>
+      <div class="scoring-box">
+        <div class="scoring-row"><span>Per matched pair</span><span class="val">+100 pts</span></div>
+        <div class="scoring-row"><span>Speed bonus (under 60 s)</span><span class="val">up to +200</span></div>
+        <div class="scoring-row"><span>Efficiency bonus (≤ 8 moves)</span><span class="val">up to +300</span></div>
+        <div class="scoring-row"><span>Wrong guess penalty</span><span class="val">−15 pts</span></div>
+        <div class="scoring-row total"><span>Max possible</span><span class="val">1,300 pts</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Stats drawer ─────────────────────────────────────────────────────── -->
+  <div id="pt-panel">
+    <div class="pt-backdrop" onclick="Stats.close()"></div>
+    <div class="pt-drawer">
+      <div class="pt-header">
+        <div class="pt-header-title"><span class="pt-header-icon">📈</span>Statistics</div>
+        <button class="pt-close-btn" onclick="Stats.close()">✕</button>
+      </div>
+      <div class="pt-body pt-scroll"></div>
+    </div>
+  </div>
+
+  <!-- ── Term info overlay (hard mode) ───────────────────────────────────── -->
+  <div class="term-overlay hidden" id="termOverlay">
+    <div class="term-overlay-backdrop" onclick="TermInfo.close()"></div>
+    <div class="term-card">
+      <div class="term-card-header">
+        <span class="term-card-pill">🔬 Menopause term</span>
+        <button class="term-card-close" onclick="TermInfo.close()">✕</button>
+      </div>
+      <div class="term-card-title" id="termTitle"></div>
+      <div class="term-card-desc"  id="termDesc"></div>
+    </div>
+  </div>
+
+  <!-- ── Main shell ────────────────────────────────────────────────────────── -->
+  <div class="shell">
+
+    <!-- Header (always visible) -->
+    <div class="app-header">
+      <div class="app-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/>
+          <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+          <path d="M17.5 14a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/>
+        </svg>
+        Memory Mosaic
+      </div>
+      <button class="header-btn" onclick="Stats.open()">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+        </svg>
+        Stats
+      </button>
+    </div>
+
+    <!-- ══ INTRO SCREEN ══════════════════════════════════════════════════ -->
+    <div class="screen" id="introScreen">
+      <p class="intro-subtitle">Flip cards and train your visual memory!</p>
+
+      <div class="intro-box">
+        <div class="intro-box-head">
+          <div class="intro-box-title">How it works</div>
+          <button class="info-icon-btn" type="button" onclick="ScoringInfo.open()" aria-label="View scoring">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9"></circle>
+              <path d="M12 10v6"></path>
+              <path d="M12 7h.01"></path>
+            </svg>
+          </button>
+        </div>
+        <div class="steps">
+          <div class="step"><div class="step-num">1</div><span>Flip two cards to reveal what's underneath.</span></div>
+          <div class="step"><div class="step-num">2</div><span><strong>Match found</strong> — pair stays face-up, you earn <strong>+100 pts</strong>.</span></div>
+          <div class="step"><div class="step-num">3</div><span><strong>No match</strong> — cards flip back; wrong guesses cost <strong>−15 pts</strong>.</span></div>
+          <div class="step"><div class="step-num">4</div><span>Finish fast for a <strong>speed bonus</strong>, fewest flips for an <strong>efficiency bonus</strong>.</span></div>
+        </div>
+      </div>
+
+
+
+      <div class="diff-label">Choose difficulty</div>
+      <div class="diff-picker">
+        <button class="diff-btn active" id="diffEasy" onclick="Game.setDiff('easy')">
+          <div class="diff-btn-top">
+            <span class="diff-icon">🟢</span>
+            <span class="diff-name">Easy</span>
+            <span class="diff-badge easy">Easy</span>
+          </div>
+          <div class="diff-desc">Emoji + label. Flip-back after 900 ms.</div>
+        </button>
+        <button class="diff-btn" id="diffHard" onclick="Game.setDiff('hard')">
+          <div class="diff-btn-top">
+            <span class="diff-icon">🔴</span>
+            <span class="diff-name">Hard</span>
+            <span class="diff-badge hard">Hard</span>
+          </div>
+          <div class="diff-desc">Menopause terms — labels only. Tap ⓘ on any card to learn what it means.</div>
+        </button>
+      </div>
+
+      <div class="intro-actions">
+        <button class="btn-primary" onclick="Game.start(false)">
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 3l14 9-14 9V3z"/></svg>
+          Play
+        </button>
+
+      </div>
+    </div>
+
+    <!-- ══ GAME SCREEN ════════════════════════════════════════════════════ -->
+    <div class="screen hidden" id="gameScreen">
+      <!-- HUD -->
+      <div class="hud">
+        <div class="hud-left">
+          <div class="stat-chip"><span class="lbl">Moves</span> <strong id="movesEl">0</strong></div>
+          <div class="stat-chip"><span class="lbl">Pairs</span> <strong id="matchesEl">0</strong>/8</div>
+          <div class="stat-chip"><span class="lbl">⏱</span> <strong id="timerEl">00:00</strong></div>
+        </div>
+        <div class="hud-right">
+          <div class="stat-chip" id="diffChip" style="font-size:11px"></div>
+          <div class="score-chip" id="scoreChip">
+            <span style="font-size:11px;font-weight:600;color:#5eead4;text-transform:uppercase;letter-spacing:.05em">Score</span>
+            <strong id="scoreEl">0</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Board -->
+      <div class="board-grid" id="board"></div>
+
+      <!-- Status -->
+      <div class="status-bar" id="statusBar">Flip two cards to begin.</div>
+
+      <!-- Game actions -->
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <button class="hud-btn" style="flex:1" onclick="Game.restart()">↩ Restart</button>
+        <button class="hud-btn" style="flex:1" onclick="Game.goMenu()">← Menu</button>
+      </div>
+    </div>
+
+    <!-- ══ COMPLETE SCREEN ════════════════════════════════════════════════ -->
+    <div class="screen hidden" id="completeScreen">
+      <div class="complete-title">Round Complete! 🎉</div>
+
+      <div class="result-banner">
+        <div class="result-score-big" id="finalScore">—</div>
+        <div class="result-score-label">points this round · <span id="finalDiff" style="font-weight:700"></span></div>
+        <div class="result-grid">
+          <div class="result-cell"><div class="result-cell-val" id="finalTime">—</div><div class="result-cell-lbl">Time</div></div>
+          <div class="result-cell"><div class="result-cell-val" id="finalMoves">—</div><div class="result-cell-lbl">Moves</div></div>
+          <div class="result-cell"><div class="result-cell-val" id="finalAcc">—</div><div class="result-cell-lbl">Accuracy</div></div>
+        </div>
+      </div>
+
+      <div class="breakdown">
+        <div class="breakdown-title">Score breakdown</div>
+        <div class="breakdown-row"><span>Matched pairs (8 × 100)</span><span class="pts" id="bdBase">800</span></div>
+        <div class="breakdown-row"><span>Speed bonus</span><span class="pts" id="bdSpeed">+0</span></div>
+        <div class="breakdown-row"><span>Efficiency bonus</span><span class="pts" id="bdEff">+0</span></div>
+        <div class="breakdown-row"><span>Wrong guess penalties</span><span class="pts" id="bdPen">−0</span></div>
+        <div class="breakdown-row total"><span>Total</span><span class="pts" id="bdTotal">800</span></div>
+      </div>
+
+      <div id="newBestWrap" style="text-align:center;margin-bottom:14px;display:none">
+        <span class="new-best-badge">🏆 New personal best!</span>
+      </div>
+
+      <div class="complete-actions">
+        <button class="btn-primary" style="max-width:160px" onclick="Game.start(false)">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          Play again
+        </button>
+        <button class="btn-secondary" style="max-width:160px" onclick="Game.goMenu()">
+          ← Change level
+        </button>
+      </div>
+      <div style="text-align:center;margin-top:10px">
+        <button class="hud-btn" onclick="Stats.open()">
+          <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="display:inline;vertical-align:middle;margin-right:4px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+          View statistics
+        </button>
+      </div>
+    </div>
+
+  </div><!-- /shell -->
+
+  <script>
+  // ── SCORING INFO ──
+  const ScoringInfo = (() => {
+    const modal = document.getElementById("scoringModal");
+    function open() { modal?.classList.remove("hidden"); }
+    function close() { modal?.classList.add("hidden"); }
+    document.addEventListener("keydown", e => { if (e.key === "Escape") close(); });
+    return { open, close };
+  })();
+  // ═══════════════════════════════════════════════════════════════════════════
+  // TOAST
+  // ═══════════════════════════════════════════════════════════════════════════
+  const Toast = (() => {
+    const el = document.getElementById('toast');
+    let hideTimer;
+    function show(msg, type, dur = 1800) {
+      clearTimeout(hideTimer);
+      el.textContent = msg;
+      el.className = `toast ${type}`;
+      void el.offsetWidth;
+      requestAnimationFrame(() => el.classList.add('show'));
+      hideTimer = setTimeout(() => el.classList.remove('show'), dur);
+    }
+    return { show };
+  })();
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // TERM INFO OVERLAY
+  // ═══════════════════════════════════════════════════════════════════════════
+  const TermInfo = (() => {
+    const overlay  = document.getElementById('termOverlay');
+    const titleEl  = document.getElementById('termTitle');
+    const descEl   = document.getElementById('termDesc');
+
+    function open(word, desc) {
+      titleEl.textContent = word;
+      descEl.textContent  = desc;
+      overlay.classList.remove('hidden');
+    }
+    function close() { overlay.classList.add('hidden'); }
+
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+    return { open, close };
+  })();
+  const Stats = (() => {
+    const KEY = 'memMosaic_v2';
+    const load  = () => { try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch { return []; } };
+    const save  = d  => { try { localStorage.setItem(KEY, JSON.stringify(d)); } catch {} };
+    const panel = () => document.getElementById('pt-panel');
+
+    function record(entry) {
+      const d = load(); d.unshift(entry); save(d);
+      if (panel()?.classList.contains('pt-open')) render();
+    }
+    function clearAll() {
+      if (confirm('Clear all history? This cannot be undone.')) { localStorage.removeItem(KEY); render(); }
+    }
+
+    function fmtDate(ts) { return new Date(ts).toLocaleDateString(undefined, { month:'short', day:'numeric' }); }
+    function fmtTime(ts) { return new Date(ts).toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit' }); }
+    function fmtSecs(s)  { return String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0'); }
+
+    function computeStreak(sessions) {
+      const days = new Set(sessions.map(s => new Date(s.ts).toDateString()));
+      let streak = 0; const d = new Date();
+      while (days.has(d.toDateString())) { streak++; d.setDate(d.getDate() - 1); }
+      return streak;
+    }
+
+    function render() {
+      const body = document.querySelector('.pt-body');
+      const sessions = load();
+      if (!sessions.length) {
+        body.innerHTML = `<div class="pt-empty">
+          <div class="pt-empty-icon">🃏</div>
+          <div class="pt-empty-title">No games played yet</div>
+          <div class="pt-empty-sub">Complete a round to start tracking your progress.</div>
+        </div>`;
+        return;
+      }
+
+      // Recompute every score from raw fields — guarantees stats always match complete screen
+      const recomputed = sessions.map(s => {
+        const spd = Math.round(MAX_SPEED * Math.max(0, 1 - s.seconds/180));
+        const eff = Math.max(0, MAX_EFF - Math.max(0, s.moves-8)*20);
+        const pen = (s.wrongGuesses||0) * WRONG_PENALTY;
+        return Math.max(0, PAIR_COUNT*SCORE_PER_MATCH + spd + eff - pen);
+      });
+
+      const bestScore = Math.max(...recomputed);
+      const avgScore  = Math.round(recomputed.reduce((a,b) => a+b, 0) / recomputed.length);
+      const streak    = computeStreak(sessions);
+
+      // ── Sparkline helpers ──
+      function sparklinePath(values, w, h) {
+        if (values.length < 2) return '';
+        const min = 0, max = Math.max(...values, 1);
+        const xStep = w / (values.length - 1);
+        return 'M' + values.map((v, i) => {
+          const x = i * xStep;
+          const y = h - ((v - min) / (max - min)) * h;
+          return `${x.toFixed(1)},${y.toFixed(1)}`;
+        }).join('L');
+      }
+
+      // ── Trend: compare last 3 vs prior 3 (oldest→newest order) ──
+      const scoresByAge = [...recomputed].reverse(); // oldest → newest
+      const recent3 = scoresByAge.slice(-3), prior3 = scoresByAge.slice(-6,-3);
+      let trend = '—', trendColor = '#94a3b8';
+      if (prior3.length && recent3.length) {
+        const rAvg = recent3.reduce((a,b)=>a+b,0)/recent3.length;
+        const pAvg = prior3.reduce((a,b)=>a+b,0)/prior3.length;
+        if (rAvg > pAvg + 30)      { trend = '↑'; trendColor = '#10b981'; }
+        else if (rAvg < pAvg - 30) { trend = '↓'; trendColor = '#f87171'; }
+        else                        { trend = '→'; trendColor = '#94a3b8'; }
+      }
+
+      // ── Sparkline card data ──
+      const sparkW = 120, sparkH = 36;
+      const chartValues = [...recomputed].slice(0, 20).reverse(); // oldest→newest, up to 20
+      const path = sparklinePath(chartValues, sparkW, sparkH);
+      const avgColor = avgScore >= 1000 ? '#10b981' : avgScore >= 700 ? '#f59e0b' : '#f87171';
+      const easyCount = sessions.filter(s => s.difficulty === 'easy').length;
+      const hardCount = sessions.filter(s => s.difficulty === 'hard').length;
+
+      const gameCardHtml = `
+        <div class="pt-game-card">
+          <div class="pt-game-header">
+            <div class="pt-game-name">Memory Mosaic
+              ${hardCount > 0 ? `<span class="pt-mode-badge">${easyCount}E · ${hardCount}H</span>` : ''}
+            </div>
+            <div class="pt-trend" style="color:${trendColor}">${trend}</div>
+          </div>
+          <div class="pt-game-metrics">
+            <div class="pt-metric">
+              <div class="pt-metric-val" style="color:${avgColor}">${avgScore.toLocaleString()}</div>
+              <div class="pt-metric-lbl">avg</div>
+            </div>
+            <div class="pt-metric">
+              <div class="pt-metric-val">${bestScore.toLocaleString()}</div>
+              <div class="pt-metric-lbl">best</div>
+            </div>
+            <div class="pt-metric">
+              <div class="pt-metric-val">${sessions.length}</div>
+              <div class="pt-metric-lbl">played</div>
+            </div>
+            <div class="pt-metric">
+              <div class="pt-metric-val">${recomputed[0].toLocaleString()}</div>
+              <div class="pt-metric-lbl">last</div>
+            </div>
+          </div>
+          <div class="pt-sparkline-wrap">
+            <svg viewBox="0 0 ${sparkW} ${sparkH}" class="pt-sparkline" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="mm-grad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#0d9488"/>
+                  <stop offset="100%" stop-color="#0d9488" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <path d="${path}L${sparkW},${sparkH}L0,${sparkH}Z" fill="url(#mm-grad)" opacity="0.22"/>
+              <path d="${path}" fill="none" stroke="#0d9488" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+            </svg>
+            <div class="pt-sparkline-label">last ${chartValues.length} sessions</div>
+          </div>
+        </div>`;
+
+      // recent sessions list
+      const recent = sessions.slice(0, 15);
+      const rows = recent.map((s, i) => {
+        const sc = recomputed[i];
+        const pctOfMax = Math.round((sc / 1300) * 100);
+        const color = sc >= 1000 ? '#10b981' : sc >= 700 ? '#f59e0b' : '#f87171';
+        const isBest = sc === bestScore;
+        const diffTag = s.difficulty === 'hard'
+          ? `<span style="font-size:9px;font-weight:700;background:#fee2e2;color:#991b1b;padding:1px 5px;border-radius:50px;margin-left:4px">HARD</span>`
+          : `<span style="font-size:9px;font-weight:700;background:#d1fae5;color:#065f46;padding:1px 5px;border-radius:50px;margin-left:4px">EASY</span>`;
+        return `<div class="pt-history-row">
+          <div class="pt-history-detail">${fmtSecs(s.seconds)} · ${s.moves} moves · ${Math.round(s.accuracy)}%${isBest ? ' 🏆' : ''}${diffTag}</div>
+          <div class="pt-history-score" style="color:${color}">${sc.toLocaleString()}</div>
+          <div class="pt-bar-track"><div class="pt-bar-fill" style="width:${pctOfMax}%;background:${color}"></div></div>
+          <div class="pt-history-date">${fmtDate(s.ts)}<br><span>${fmtTime(s.ts)}</span></div>
+        </div>`;
+      }).join('');
+
+      body.innerHTML = `
+        <div class="pt-overview">
+          <div class="pt-pill"><div class="pt-pill-val">${sessions.length}</div><div class="pt-pill-lbl">Games</div></div>
+          <div class="pt-pill"><div class="pt-pill-val">${bestScore.toLocaleString()}</div><div class="pt-pill-lbl">Best</div></div>
+          <div class="pt-pill"><div class="pt-pill-val">${streak}🔥</div><div class="pt-pill-lbl">Streak</div></div>
+        </div>
+        <div class="pt-overview" style="margin-top:-10px">
+          <div class="pt-pill"><div class="pt-pill-val">${avgScore.toLocaleString()}</div><div class="pt-pill-lbl">Avg Score</div></div>
+          <div class="pt-pill"><div class="pt-pill-val">${Math.round(sessions.reduce((a,s)=>a+(s.accuracy||0),0)/sessions.length)}%</div><div class="pt-pill-lbl">Avg Acc.</div></div>
+          <div class="pt-pill"><div class="pt-pill-val">${Math.min(...sessions.map(s=>s.moves))}</div><div class="pt-pill-lbl">Best Moves</div></div>
+        </div>
+        <div class="pt-section-title">Score over time</div>
+        <div class="pt-game-cards">${gameCardHtml}</div>
+        <div class="pt-section-title">Recent rounds</div>
+        <div class="pt-history">${rows}</div>
+        <button class="pt-clear-btn" onclick="Stats.clearAll()">🗑 Clear all history</button>
+      `;
+    }
+
+    function open()  { render(); requestAnimationFrame(() => panel().classList.add('pt-open')); }
+    function close() { panel().classList.remove('pt-open'); }
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+
+    return { record, open, close, clearAll };
+  })();
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // GAME
+  // ═══════════════════════════════════════════════════════════════════════════
+  const EASY_SYMBOLS = [
+            { icon: "🔥", name: "Hot Flah", bg: "#fefce8", border: "#fde68a" },
+            { icon: "💧", name: "Night Sweats", bg: "#fdf2f8", border: "#f9a8d4" },
+            { icon: "😴", name: "Insomnia", bg: "#f5f3ff", border: "#c4b5fd" },
+            { icon: "😠 ", name: "Mood Swings", bg: "#f0fdfa", border: "#6ee7b7" },
+            { icon: "🧠 ", name: "Brain Fog", bg: "#fff1f2", border: "#fda4af" },
+            { icon: "💔 ", name: "Heart Palpitations", bg: "#f0fdf4", border: "#86efac" },
+            { icon: "🦴", name: "Bone Loss", bg: "#eff6ff", border: "#93c5fd" },
+            { icon: "🌊 ", name: "Irregular Periods", bg: "#fffbeb", border: "#fcd34d" }
+        ];
+
+        const HARD_WORDS = [
+            {
+                word: "Perimenopause", label: "Perimenopause",
+                bg: "#fdf4ff", border: "#e879f9",
+                desc: "The transitional phase leading up to menopause, often lasting several years, during which hormone levels begin to fluctuate and periods become irregular."
+            },
+            {
+                word: "Hot Flashes", label: "Hot Flashes",
+                bg: "#fff7ed", border: "#fb923c",
+                desc: "Sudden feelings of intense heat, often with sweating, flushing, and rapid heartbeat. One of the most common and recognisable symptoms of menopause."
+            },
+            {
+                word: "Estrogen", label: "Estrogen",
+                bg: "#fdf2f8", border: "#f9a8d4",
+                desc: "The primary female sex hormone that declines significantly during menopause, driving most of the associated symptoms including hot flashes, mood changes, and bone loss."
+            },
+            {
+                word: "FSH", label: "FSH",
+                bg: "#eff6ff", border: "#93c5fd",
+                desc: "Follicle-Stimulating Hormone. Rises sharply as the ovaries produce less estrogen. Elevated FSH levels (typically above 30 IU/L) are used clinically to confirm menopause."
+            },
+            {
+                word: "HRT", label: "HRT",
+                bg: "#f0fdf4", border: "#86efac",
+                desc: "Hormone Replacement Therapy. A treatment that supplements estrogen (and often progesterone) to relieve menopausal symptoms such as hot flashes, sleep disruption, and mood changes."
+            },
+            {
+                word: "Osteoporosis", label: "Osteoporosis",
+                bg: "#fefce8", border: "#fde68a",
+                desc: "Accelerated bone density loss that occurs after menopause due to lower estrogen. Bones become more fragile and prone to fractures, particularly in the hip, spine, and wrist."
+            },
+            {
+                word: "GSM", label: "GSM",
+                bg: "#fff1f2", border: "#fda4af",
+                desc: "Genitourinary Syndrome of Menopause. A cluster of symptoms including vaginal dryness, urinary urgency, and discomfort during sex, caused by declining estrogen affecting vaginal and urinary tissues."
+            },
+            {
+                word: "Postmenopause", label: "Postmenopause",
+                bg: "#f5f3ff", border: "#c4b5fd",
+                desc: "The stage beginning 12 months after a woman's last menstrual period and lasting the rest of her life. Certain health risks — cardiovascular disease, osteoporosis — become more prominent during this phase."
+            }
+        ];
+  const SCORE_PER_MATCH=100, WRONG_PENALTY=15, MAX_SPEED=200, MAX_EFF=300;
+  const calcSpeed = s => Math.round(MAX_SPEED * Math.max(0, 1 - s/180));
+  const calcEff   = m => Math.max(0, MAX_EFF - Math.max(0, m-8) * 20);
+  const PAIR_COUNT = 8;
+  const calcFinal = (secs, moves, wrongs) =>
+    Math.max(0, PAIR_COUNT*SCORE_PER_MATCH + calcSpeed(secs) + calcEff(moves) - wrongs*WRONG_PENALTY);
+  const fmtSecs = s => String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+  const shuffle  = a => { for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
+
+  const Game = (() => {
+    // DOM
+    const screens   = { intro: 'introScreen', game: 'gameScreen', complete: 'completeScreen' };
+    const movesEl   = document.getElementById('movesEl');
+    const matchesEl = document.getElementById('matchesEl');
+    const timerEl   = document.getElementById('timerEl');
+    const scoreEl   = document.getElementById('scoreEl');
+    const scoreChip = document.getElementById('scoreChip');
+    const diffChip  = document.getElementById('diffChip');
+    const statusBar = document.getElementById('statusBar');
+    const boardEl   = document.getElementById('board');
+
+    // state
+    let deck=[], firstCard=null, secondCard=null;
+    let lockBoard=false, moves=0, matches=0, wrongGuesses=0;
+    let seconds=0, timerId=null, started=false, previewTimer=null;
+    let difficulty = 'easy'; // 'easy' | 'hard'
+
+    // Difficulty config
+    const DIFF = {
+      easy: { flipBackMs: 900,  showName: true,  label: '🟢 Easy' },
+      hard: { flipBackMs: 600,  showName: false, label: '🔴 Hard' }
+    };
+
+    // ── Difficulty selection ──
+    function setDiff(d) {
+      difficulty = d;
+      document.getElementById('diffEasy').classList.toggle('active', d === 'easy');
+      document.getElementById('diffHard').classList.toggle('active', d === 'hard');
+    }
+
+    // ── Screen routing ──
+    function show(name) {
+      Object.values(screens).forEach(id => {
+        document.getElementById(id).classList.toggle('hidden', id !== screens[name]);
+      });
+    }
+
+    // ── HUD ──
+    function liveScore() { return Math.max(0, matches*SCORE_PER_MATCH - wrongGuesses*WRONG_PENALTY); }
+    function updateHUD() {
+      movesEl.textContent   = moves;
+      matchesEl.textContent = matches;
+      timerEl.textContent   = fmtSecs(seconds);
+      scoreEl.textContent   = liveScore().toLocaleString();
+      scoreChip.classList.remove('pop');
+      void scoreChip.offsetWidth;
+      scoreChip.classList.add('pop');
+    }
+    function setStatus(t, cls='') { statusBar.textContent=t; statusBar.className=`status-bar${cls?' '+cls:''}`; }
+
+    // ── Timer ──
+    function startTimer() { if(timerId) return; timerId=setInterval(()=>{ seconds++; timerEl.textContent=fmtSecs(seconds); }, 1000); }
+    function stopTimer()  { clearInterval(timerId); timerId=null; }
+
+    // ── Board ──
+    function makeDeck() {
+      const source = difficulty === 'hard' ? HARD_WORDS : EASY_SYMBOLS;
+      return shuffle(source.flatMap((s,i) => [
+        {...s, uid:`${i}a`, pairId:i},
+        {...s, uid:`${i}b`, pairId:i}
+      ]));
+    }
+
+    function buildCard(d) {
+      const cfg = DIFF[difficulty];
+      const btn = document.createElement('button');
+      btn.className = 'card';
+      btn.dataset.uid     = d.uid;
+      btn.dataset.pair    = d.pairId;
+      btn.dataset.flipped = 'false';
+      btn.dataset.state   = 'idle';
+      btn.setAttribute('aria-label', 'Hidden card');
+
+      const easyBack = `
+            <div class="card-emoji">${d.icon}</div>
+            ${cfg.showName ? `<div class="card-name">${d.name}</div>` : ''}`;
+
+      // Hard mode: show short label + ⓘ info button
+      const infoSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="9"/><path d="M12 10v6"/><circle cx="12" cy="7.5" r=".5" fill="currentColor" stroke="none"/>
+      </svg>`;
+      const hardBack = `
+        <div class="card-word">${d.label || d.word}</div>
+        <button class="card-info-btn" data-desc="${encodeURIComponent(d.desc||'')}" data-word="${encodeURIComponent(d.word||d.label||'')}" aria-label="Learn more about ${d.word}">${infoSvg}</button>`;
+
+      btn.innerHTML = `
+        <div class="card-inner">
+          <div class="card-face card-front">
+            <div class="card-front-star">✦</div>
+            <div class="card-front-lbl">flip</div>
+          </div>
+          <div class="card-face card-back" style="background:${d.bg};border-color:${d.border}">
+            ${difficulty === 'hard' ? hardBack : easyBack}
+            <div class="matched-tick hidden">✓</div>
+          </div>
+        </div>`;
+
+      // Main card flip — but not if the info button was the click target
+      btn.addEventListener('click', (e) => {
+        if (e.target.closest('.card-info-btn')) return; // handled separately
+        flip(btn, d);
+      });
+
+      // Info button — stop propagation so it never triggers a flip
+      const infoBtn = btn.querySelector('.card-info-btn');
+      if (infoBtn) {
+        infoBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const word = decodeURIComponent(infoBtn.dataset.word);
+          const desc = decodeURIComponent(infoBtn.dataset.desc);
+          TermInfo.open(word, desc);
+        });
+      }
+
+      return btn;
+    }
+
+    function renderBoard() {
+      boardEl.innerHTML = '';
+      deck.forEach(d => boardEl.appendChild(buildCard(d)));
+    }
+
+    // ── Card helpers ──
+    function setFlipped(card, val) { card.dataset.flipped = val ? 'true' : 'false'; }
+    function setMatched(card) {
+      card.dataset.state = 'matched';
+      card.querySelector('.matched-tick').classList.remove('hidden');
+      card.disabled = true;
+    }
+    function resetTurn() { [firstCard, secondCard] = [null, null]; lockBoard = false; }
+
+    // ── Preview ──
+    function previewAll() {
+      if (!deck.length || lockBoard) return;
+      clearTimeout(previewTimer);
+      const cards = [...boardEl.children].filter(c => c.dataset.state !== 'matched');
+      cards.forEach(c => setFlipped(c, true));
+      setStatus('Memorize the positions…');
+      lockBoard = true;
+      previewTimer = setTimeout(() => {
+        cards.forEach(c => { if (c.dataset.state !== 'matched') setFlipped(c, false); });
+        lockBoard = false;
+        setStatus('Preview done — start flipping!');
+      }, 2000);
+    }
+
+    // ── Flip ──
+    function flip(card, d) {
+      if (lockBoard || card === firstCard || card.dataset.state === 'matched') return;
+      if (!started) { started = true; startTimer(); setStatus('Game on!'); }
+      setFlipped(card, true);
+      if (!firstCard) { firstCard = card; return; }
+      secondCard = card; lockBoard = true; moves++;
+
+      if (firstCard.dataset.pair === secondCard.dataset.pair) {
+        setMatched(firstCard); setMatched(secondCard);
+        matches++;
+        updateHUD();
+        setStatus('Match found!', 'match');
+        Toast.show('✓ Match! +100 pts', 'match', 1200);
+        resetTurn();
+        if (matches === deck.length / 2) finishGame();
+      } else {
+        wrongGuesses++;
+        updateHUD();
+        const firstItem = deck.find(x => x.uid === firstCard.dataset.uid);
+        // Hard mode: don't give away the name in the status message
+        const missMsg = difficulty === 'hard'
+          ? 'No match — keep going!'
+          : `No match — ${firstItem.name} & ${d.name}`;
+        setStatus(missMsg, 'miss');
+        Toast.show(`✗ No match — −${WRONG_PENALTY} pts`, 'miss', 1400);
+        setTimeout(() => {
+          setFlipped(firstCard, false);
+          setFlipped(secondCard, false);
+          resetTurn();
+          setStatus('Keep going…');
+        }, DIFF[difficulty].flipBackMs);
+      }
+    }
+
+    // ── Finish ──
+    function finishGame() {
+      stopTimer();
+      const fs  = calcFinal(seconds, moves, wrongGuesses);
+      const spd = calcSpeed(seconds);
+      const eff = calcEff(moves);
+      const pen = wrongGuesses * WRONG_PENALTY;
+      const acc = (matches / Math.max(moves, 1)) * 100;
+
+      const history = (() => { try { return JSON.parse(localStorage.getItem('memMosaic_v2')) || []; } catch { return []; } })();
+      const prevBest = history.length ? Math.max(...history.map(e => e.score)) : -Infinity;
+      Stats.record({ ts: Date.now(), score: fs, seconds, moves, wrongGuesses, accuracy: acc, difficulty });
+
+      document.getElementById('finalScore').textContent = fs.toLocaleString();
+      document.getElementById('finalDiff').textContent  = DIFF[difficulty].label;
+      document.getElementById('finalTime').textContent  = fmtSecs(seconds);
+      document.getElementById('finalMoves').textContent = moves;
+      document.getElementById('finalAcc').textContent   = Math.round(acc) + '%';
+      document.getElementById('bdBase').textContent     = `${PAIR_COUNT * SCORE_PER_MATCH}`;
+      document.getElementById('bdSpeed').textContent    = `+${spd}`;
+      document.getElementById('bdEff').textContent      = `+${eff}`;
+      document.getElementById('bdPen').textContent      = `−${pen}`;
+      document.getElementById('bdTotal').textContent    = fs.toLocaleString();
+      document.getElementById('newBestWrap').style.display = fs > prevBest ? 'block' : 'none';
+
+      show('complete');
+    }
+
+    // ── Public API ──
+    function start(withPreview = false) {
+      clearTimeout(previewTimer); stopTimer();
+      firstCard=null; secondCard=null; lockBoard=false;
+      moves=0; matches=0; wrongGuesses=0; seconds=0; started=false;
+      deck = makeDeck(); renderBoard(); updateHUD();
+
+      // Update difficulty chip in HUD
+      const cfg = DIFF[difficulty];
+      diffChip.textContent = cfg.label;
+      diffChip.style.borderColor = difficulty === 'hard' ? '#fca5a5' : '#6ee7b7';
+      diffChip.style.color       = difficulty === 'hard' ? '#991b1b' : '#065f46';
+      diffChip.style.background  = difficulty === 'hard' ? '#fff1f2' : '#f0fdf4';
+
+      setStatus('Flip two cards to begin.');
+      show('game');
+      if (withPreview) setTimeout(previewAll, 150);
+    }
+    function restart() { start(false); }
+    function goMenu()  { stopTimer(); show('intro'); }
+
+    return { start, restart, goMenu, setDiff };
+  })();
+  </script>
+</body>
+</html>
